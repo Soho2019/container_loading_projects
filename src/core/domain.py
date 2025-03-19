@@ -7,6 +7,7 @@
 """
 
 from dataclasses import dataclass
+import numpy as np
 from typing import List, Tuple, Optional
 
 @dataclass
@@ -33,6 +34,7 @@ class ProductsSpec:
     weight: float
     fragility: int                                      # 易碎等级
     allowed_rotations: List[Tuple[int, int, int]]       # 允许的旋转姿态
+    category: str                                       # 货物类别
 
 @dataclass
 class PalletSpec:
@@ -56,7 +58,40 @@ class LoadingPoint:
 @dataclass
 class Solution:
     """装载方案结果"""
-    container_id: int
-    items: List[Tuple[int, Tuple[int, int, int]]]
-    volume_utilization: float           # 容积利用率
-    weight_utilization: float           # 载重利用率
+    items: List[ProductsSpec]
+    positions: List[Tuple[float, float, float]]
+    volume_utilization: float
+    weight_utilization: float
+    stability_score: float = 0.0
+
+
+@dataclass
+class Placement:
+    """货物放置信息"""
+    product: 'ProductsSpec'
+    position: Tuple[float, float, float]
+    dimensions: Tuple[float, float, float]
+
+@dataclass
+class Particle:
+    """粒子群优化粒子"""
+    position: List[float]
+    velocity: List[float] 
+    best_position: List[float]
+    best_fitness: float = -float('inf')
+
+    @classmethod
+    def generate_random(cls):
+        return cls(
+            position=np.random.rand(3).tolist(),
+            velocity=np.zeros(3).tolist(),
+            best_position=[]
+        )
+
+    def copy(self):
+        return Particle(
+            position=self.position.copy(),
+            velocity=self.velocity.copy(),
+            best_position=self.best_position.copy(),
+            best_fitness=self.best_fitness
+        )

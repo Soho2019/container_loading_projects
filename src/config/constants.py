@@ -10,22 +10,24 @@
 class AlgorithmParams:
     """算法超参数配置"""
     # 遗传算法参数(GA)
-    TRAY_POP_SIZE = 100                          # 种群大小
+    TRAY_POP_SIZE = 100                        # 种群大小
     TRAY_MUTATION_RATE = 0.2                   # 变异概率
     TRAY_ELITE_RATIO = 0.25                    # 精英保留比例
+    MIN_PALLET_FILL = 0.8                      # 最小托盘面积填充率
 
     # 蚁群算法参数(ACO)
     ACO_ANTS_NUM = 100                          # 基准蚂蚁数量(根据问题规模动态调整)
     ACO_ANTS_DYNAMIC = lambda n: int(n**0.5)    # 动态蚂蚁数量公式
     ACO_EVAPORATION = 0.1                       # 信息素挥发系数(典型值0.1-0.5)
     ACO_PHEROMONE = 1.0                         # 信息素强度(信息素初始强度，但需动态衰减)
+    ACO_HEURISTIC_POWER = 1.0                   # 启发式函数权重(典型值1.0-2.0)
 
 
     # 粒子群算法参数(PSO)
     PSO_INERTIA = (0.9, 0.4)            # 惯性权重动态范围（初始 → 终值）
-    PSO_COGNITVE = 1.2                  # 个体学习因子
-    PSO_SOCIAL = 1.2                    # 社会学习因子
-
+    PSO_POP_SIZE = 30                   # 种群大小
+    PSO_COGNITVE_WEIGHT = 1.2           # 个体学习因子权重(典型值0.7-1.2)
+    PSO_SOCIAL_WEIGHT = 1.2             # 社会学习因子权重(典型值0.7-1.2)
 
     # 模拟退火算法参数(SA)
     SA_INIT_TEMP = 1000                 # 初始温度(需与目标函数量级匹配)
@@ -42,6 +44,9 @@ class AlgorithmParams:
     # 混合算法全局控制
     HYBRID_MAX_ITER = 1000            # 最大迭代次数
     HYBRID_EARLY_STOP = 50            # 早停轮次
+
+
+    SPECIAL_RULE_PENALTY_WEIGHT = 0.3  # 特殊规则惩罚权重
 
 
 class PathConfig:
@@ -69,7 +74,7 @@ class BusinessRules:
     PALLET_LIMIT_LONGITUDENAL = 1200                                                    # 托盘最大长度(纵向长度)
     PALLET_GAP = {"longitudinal": 20, "lateral": 100}                                   # 托盘横纵间距(纵向间距，横向间距)
     PALLET_GAP_CONTAINER = {"left": 0, "right": 0, "front": 0, "back": 50}              # 托盘与集装箱间距(左间距，右间距, 前间距, 后间距)
-    GAP_OF_GOODS_AND_THE_EDGE_OF_PALLET = 10                                            # 货物与托盘边缘间距
+    GAP_OF_GOODS_AND_THE_EDGE_OF_PALLET = 10                                            # 货物与托盘最小边缘间距
     SUPPORT_AREA_MIN_LIMIT = 0.95                                                       # 支撑面积最小限制
 
 

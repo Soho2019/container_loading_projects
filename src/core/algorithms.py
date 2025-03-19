@@ -1,13 +1,17 @@
 import numpy as np
 import random
+import math
+
+from concurrent.futures import ProcessPoolExecutor
+from pulp import LpMaximize, LpProblem, LpVariable
 from typing import Union, Tuple, List, Dict
-from scipy.spatial import KDTree
-from sklearn.cluster import KMeans
+from scipy.spatial import KDTree, Voronoi
+from sklearn.cluster import KMeans, DBSCAN
 from collections import defaultdict
 from dataclasses import dataclass
 
 from config.constants import AlgorithmParams, BusinessRules
-from core.domain import ContainerSpec, ProductsSpec, PalletSpec, LoadingPoint
+from core.domain import ContainerSpec, ProductsSpec, PalletSpec, LoadingPoint, Solution, Particle, Placement
 from database.converters import decode_rotations
 
 
@@ -79,7 +83,29 @@ def calculate_center_offset(products: list, container: object, positions: list, 
         return (offset_x, offset_y, offset_z)
 
 
-# ----------------------------------- 托盘选择，基于遗传算法 -----------------------------------
+
+# ------------------------------- 帕累托前沿处理 -------------------------------
+class ParetoFront:
+    """简易帕累托前沿管理"""
+    def __init__(self, solutions):
+        self.solutions = solutions
+    
+    def top(self, n):
+        return sorted(self.solutions, key=lambda x: x.fitness, reverse=True)[:n]
+
+# ------------------------------- 支配关系判断 -------------------------------
+def dominates(a, b):
+    """判断解a是否支配解b"""
+    return (a.volume_utilization >= b.volume_utilization and 
+            a.weight_utilization >= b.weight_utilization and
+            a.stability_score >= b.stability_score and
+            (a.volume_utilization > b.volume_utilization or
+             a.weight_utilization > b.weight_utilization or
+             a.stability_score > b.stability_score))
+
+
+
+# ----------------------------------- 托盘选择，基于遗传算法(双层优化+动态剪枝) -----------------------------------
 @dataclass
 class PallentSolution:
     """托盘布局方案"""
@@ -180,6 +206,10 @@ class PallentOptimizerGA:
             pallet = random.choice(self.candidate_pallets)
             pallet_length = pallet[0] + BusinessRules.PALLET_GAP['longitudinal']
 
+            # 动态剪枝：填充率不足80%时，直接舍弃该托盘
+            if self._calc_pallet_fill(pallet) < AlgorithmParams.MIN_PALLET_FILL:
+                continue
+
             if used_length + pallet_length > max_length:
                 break
 
@@ -188,8 +218,14 @@ class PallentOptimizerGA:
 
             solution.append(pallet)
             used_length += pallet_length
-        
-        return solution
+
+        if solution:                    # 确保至少有一个有效托盘
+            return solution
+    
+    def _calc_pallet_fill(self, pallet: Tuple) -> float:
+        """快速计算单个托盘的填充率"""
+        eff_area = (pallet[0] - 2 * BusinessRules.GAP_OF_GOODS_AND_THE_EDGE_OF_PALLET) * (pallet[1] - 2 * BusinessRules.GAP_OF_GOODS_AND_THE_EDGE_OF_PALLET)
+        return sum(i[0] * i[1] for i in self.products) / eff_area if eff_area > 0 else 0
     
     def _fitness(self, individual: List) -> float:
         """计算适用度"""
@@ -459,39 +495,178 @@ class TowerPackingAlgorithm:
 
 # ----------------------------------- 二维装载点优化算法 -----------------------------------
 class BinPacking2D:
-    """改进的二维装载优化器（支持间隙规则和智能优化）"""
-    def __init__(self, container_width: float, container_height: float, global_offset: Tuple[float, float] = (0, 0)):
+    """二维装载优化器(Voronoi空隙分析 + DBSCAN聚类)"""                                                          # 待修改
+    def __init__(self, container_size: Tuple[float, float], global_offset: Tuple[float, float] = (0, 0)):
         """
         参数：
         container_width: 装载区域宽度（单位：毫米）
         container_height: 装载区域高度（单位：毫米）
         global_offset: 全局全局坐标偏移量（单位：毫米, 用于结果转换）
         """
-        self.width = container_width
-        self.height = container_height
+        self.width, self.height = container_size
         self.global_offset = global_offset
 
         # 初始化装载点(考虑间隙规则)
         self.gap_left = BusinessRules.PALLET_GAP_CONTAINER['left']
         self.gap_right = BusinessRules.PALLET_GAP_CONTAINER['right']
         self.gap_front = BusinessRules.PALLET_GAP_CONTAINER['front']
-        self.gap_back = BusinessRules.PALLET_GAP_CONTAINER['back']    
-    def initalize_ponits(self):
-        """步骤1: 初始化装载点"""
-        # 初始左下角点(考虑货物放置间隙)
+        self.gap_back = BusinessRules.PALLET_GAP_CONTAINER['back']
+        self.gap_lateral = BusinessRules.PALLET_GAP['lateral']
+        self.gap_longitudinal = BusinessRules.PALLET_GAP['longitudinal']
 
-    def select_best_point(self) -> LoadingPoint:
-        """步骤2: 选择最佳装载点"""
+        self.points = []
+        self._init_points()
 
-    def cluster_points(self):
-        """步骤3: 基于密度的装载点聚类"""
+    def _init_points(self):
+        """初始化装载点(考虑间隙规则)"""
+        effective_width = self.width - self.gap_left - self.gap_right
+        effective_height = self.height - self.gap_front - self.gap_back
+
+        self.points.append({
+            'x': self.gap_left,
+            'y': self.gap_front,
+            'width': effective_width,
+            'height': effective_height,
+            'active': True
+        })
     
-    def _split_space(self, point: LoadingPoint, used_w: float, used_h: float):
-        """分裂剩余空间生成新候选点"""
+    def hybrid_optimize(self, items:List[dict]) -> dict:
+        """
+        混合优化流程
+        items: 待装载货物列表，每个元素包含：
+        'dimensions': (长， 宽， 高)
+        'fragility': 易碎等级
+        """
+        # 阶段1：基础贪婪装载
+        base_solution = self.greedy_packing(items)
 
+        # 阶段2：智能优化（示例使用SA）
+        optimized = self.simulated_annealing(base_solution)
 
+        # 转换全局坐标
+        return self._convert_to_global(optimized)
+    
+    def greedy_paking(self, items: List[dict]) -> List[dict]:
+        """改进的贪婪装载算法"""
+        sorted_items = sorted(items, key=lambda x: (x['fragility'], -x['dimensions'][0] * x['dimensions'][1]), reverse=True)
 
+        result = []
+        for item in sorted_items:
+            placed = False
+            for point in self.active_points:
+                if self._can_place(item, point):
+                    self._place_item(item, point)
+                    result.append(self._create_placement(item, point))
+                    placed = True
+                    break
+            if not placed:
+                print(f"警告：无法放置货物{item['id']}")
+        return result
+    
+    def simulated_annealing(self, initial_solution):
+        """模拟退火算法优化框架"""
+        current = initial_solution
+        current_energy = self._energy(current)
 
+        for temp in self._cooling_schedule():
+            neighbor = self._generate_neighbor(current)
+            neighbor_energy = self._energy(neighbor)
+
+            if self._accept_solution(current_energy, neighbor_energy, temp):
+                current = neighbor
+                current_energy = neighbor_energy
+        return current
+    
+    def _energy(self, solution) -> float:
+        """评估方案质量: 负空间利用率 + 稳定性惩罚"""
+        utilization = self._calculate_utilization(solution)
+        stability = self._calculate_stability(solution)
+        return -(utilization * 0.8 + stability * 0.2)                # 负利用率转为最小化问题
+    
+    def  _generate_neighbor(self, solution):
+        """生成邻域解（交换两个随机物品位置）"""
+        new_sol = solution.copy()
+        if len(new_sol) >= 2:
+            i, j = np.random.choice(len(new_sol), 2, replace=False)
+            new_sol[i], new_sol[j] = new_sol[j], new_sol[i]
+        return new_sol
+    
+    def _convert_to_global(self, solution) -> dict:
+        """转换局部坐标到全局坐标系"""
+        return {
+            'positions': [{
+                'global_x': self.global_offset[0] + pos['x'],
+                'global_y': self.global_offset[1] + pos['y'],
+                'dimensions': pos['dimensions'],
+                'product_id': pos['product_id'],
+            } for pos in solution],
+            'utilization': self._calculate_utilization(solution)
+        }
+    
+    @property
+    def active_points(self):
+        return [p for p in self.points if p['active']]
+    
+    def _can_place(self, item, point) -> bool:
+        """检查是否可以放置"""
+        item_w, item_h = item['dimensions'][0], item['dimensions'][1]
+        return (
+            item_w <= point['width'] and
+            item_h <= point['height'] and
+            point['active']
+        )
+    
+    def _place_item(self, item, point):
+        """执行放置操作并分割空间"""
+        point['acitve'] = False
+
+        # 生成右侧剩余区域
+        remaining_width = point['width'] - item['dimensions'][0]
+        if remaining_width > self.gap_lateral:
+            self.points.append({
+                'x': point['x'] + item['dimensions'][0] + self.gap_lateral,
+                'y': point['y'],
+                'width': remaining_width - self.gap_lateral,
+                'height': item['dimensions'][1],
+                'active': True
+            })
+        
+        # 生成后方剩余区域
+        remaining_height = point['height'] - item['dimensions'][1]
+        if remaining_height > self.gap_longitudinal:
+            self.points.append({
+                'x': point['x'],
+                'y': point['y'] + item['dimensions'][1] + self.gap_longitudinal,
+                'width': point['width'],
+                'height': remaining_height - self.gap_longitudinal,
+                'active': True
+            })
+        
+    def _create_placement(self, item, point) -> dict:
+        """创建放置记录"""
+        return {
+            'product_id': item['id'],
+            'x': point['x'],
+            'y': point['y'],
+            'dimensions': item['dimensions'],
+            'fragility': item['fragility']
+        }
+    
+    def _calculate_utilization(self, solution) -> float:
+        """计算空间利用率"""
+        used = sum(item['dimensions'][0] * item['dimensions'][1] for item in solution)
+        available = self.width * self.height
+        return used / available if available > 0 else 0
+    
+    def _cooling_schedule(self):
+        """模拟退火降温曲线"""
+        return np.linspace(1.0, 0.01, num=100)
+    
+    def _accept_solution(self, current_e, new_e, temp) -> bool:
+        """接受准则"""
+        if new_e < current_e:
+            return True
+        return np.exp((current_e - new_e) / temp) > np.random.random()
 
 
 
@@ -558,22 +733,30 @@ class HierarchicalOptimizer:
         # 阶段3：全局优化调整
         return self._global_refinement(pallet_solution, tower_solutions)
     
-    def _assign_products(self, pallet: PalletSpec, position: Tuple) -> List[ProductsSpec]:
+    def _assign_products(self, pallet: PalletSpec) -> List[ProductsSpec]:
         """智能分配货物到指定托盘"""
-        max_w = pallet.length - 2 * BusinessRules.PALLET_GAP_CONTAINER['front']
-        max_h = pallet.width - 2 * BusinessRules.PALLET_GAP_CONTAINER['left']
+        max_l = pallet.length - 2 * BusinessRules.GAP_OF_GOODS_AND_THE_EDGE_OF_PALLET
+        max_w = pallet.width - 2 * BusinessRules.GAP_OF_GOODS_AND_THE_EDGE_OF_PALLET
 
-        return [p for p in self.products if p.length <= max_w and p.width <= max_h]
+        return [p for p in self.products if p.length <= max_l and p.width <= max_w]
 
     def _global_refinement(self, pallet_solution, tower_solutions) -> dict:
         """全局优化调整(预留群智能算法接口)"""
         # 当前方案评估
         current_score = self._evaluate_solution(pallet_solution, tower_solutions)
 
-        # 
-
         # 生成最终结果
-        return self._build_final_result()
+        improved_solution = self._simulated_annealing({
+            'pallet_layout': pallet_solution,
+            'tower_solutions': tower_solutions
+        })
+        
+        return self._build_final_result(improved_solution)
+    
+    def _simulated_annealing(self, solution):
+        """模拟退火实现（示例）"""
+        # 实际应包含扰动和评估逻辑
+        return solution  # 示例直接返回原方案
     
     def _evaluate_solution(self, pallet_solution, tower_solutions) -> float:
         """方案评估（体积利用率 + 稳定性）"""
@@ -591,54 +774,258 @@ class HierarchicalOptimizer:
 
 
 
-
-
-
-
-
-
-
-
-# ----------------------------------- ACO + PSO + SA + NSGAII -----------------------------------
+# ----------------------------------- ACO + PSO + SA  -----------------------------------
 class ACO:
+    """蚁群优化算法，生成初始解"""
     def __init__(self):
-        self,num_ants = AlgorithmParams.ACO_ANTS_NUM
+        self.num_ants = AlgorithmParams.ACO_ANTS_NUM
+        self.pheromone = defaultdict(float)
+        self.heuristic_power = AlgorithmParams.ACO_HEURISTIC_POWER
     
-    def optimize(self, containr: ContainerSpec, products: ProductsSpec, pallet: PalletSpec):
-        pass
+    def generate_solutions(self, container, products, pallet):
+        solutions = []
+        for _ in range(self.num_ants):
+            solution = self._construct_solution(container, products, pallet)
+            solutions.append(solution)
+        return ParetoFront(solutions)
+    
+    def _construct_solution(self, container, products, pallet):
+        solution = []
+        remaining_space = container.volume
+        sorted_products = sorted(products, key=lambda x: x.volume, reverse=True)
 
+        while remaining_space > 0 and sorted_products:
+            next_item = self._select_product(sorted_products, solution)
+            if next_item is None:
+                break
+            solution.append(next_item)
+            remaining_space -= next_item.volume
+            sorted_products.remove(next_item)
+        return Solution(items=solution, positions=self._calculate_positions(solution))
+    
+    def _select_product(self, candidates, current_solution):
+        if not candidates:
+            return None
+        
+        probabilites = []
+        total = 0
+        for item in candidates:
+            pheromone = self.pheromone[item.id] ** self.heuristic_power
+            heuristic = (1 / item.volume)                   # 倾向于小体积物品填充空隙
+            probabilites.append(pheromone * heuristic)
+            total += pheromone * heuristic
+
+        if total == 0:
+            return random.choice(candidates)
+        probabilites = [p / total for p in probabilites]
+
+        return np.random.choice(candidates, p=probabilites) 
 
 class PSO:
-    pass
+    """粒子群优化算法，优化局部解"""
+    def __init__(self):
+        self.pop_size = AlgorithmParams.PSO_POP_SIZE
+        self.inertia = AlgorithmParams.PSO_INERTIA
+        self.cognitive_wight = AlgorithmParams.PSO_COGNITVE_WEIGHT
+        self.socical_wight = AlgorithmParams.PSO_SOCIAL_WEIGHT
+        self.population = []
 
+    def initialize(self, elite_solutions):
+        self.population = [Particle(solution) for solution in elite_solutions]
+        for _ in range(self.pop_size - len(elite_solutions)):
+            self.population.append(Particle.generate_random())
 
+    def step(self):
+        for particle in self.population:
+            # 更新速度和位置
+            cognitive = self.cognitive_wight * np.random.random() * (particle.best.position - particle.position)
+            social = self.socical_wight * np.random.random() * (self.global_best.position - particle.position)
+            particle.velocity = self.inertia * particle.velocity + cognitive + social
+            particle.position += particle.velocity
+
+            # 更新最优解
+            if particle.fitness > particle.best.fitness:
+                particle.best = particle.copy()
+            if particle.fitness > self.global_best.fitness:
+                self.global_best = particle.copy()
 
 class SA:
-    pass
-
-
-
-class NSGAII:
+    """模拟退火算法，优化全局解"""
     def __init__(self):
-        pass
+        self.init_temp = AlgorithmParams.SA_INIT_TEMP
+        self.cooling_rate = AlgorithmParams.SA_COOLING_RATE
 
-    def multi_objective_optimization(solutions: list, container: object, use_pallet: bool):
-        """多目标优化：计算每个解的容积、载重、重心偏移目标值"""
-        for sol in solutions:
-            # 假设 sol 包含 items（货物属性）和 positions（坐标列表）
-            sol.volume_util = calculate_volume_utilization(
-                items=sol.items,
-                container=container,
-                use_pallet=use_pallet
-            )
-            sol.weight_util = calculate_weight_utilization(
-                items=sol.items,
-                container=container
-            )
-            sol.center_offset = calculate_center_offset(
-                products=sol.items,
-                positions=sol.positions,  # 关键：传入动态生成的坐标
-                container=container,
-                return_total=True
-            )
-        return solutions
+    def perturb(self, solution):
+        new_sol = solution.copy()
+        # 随机交换两个位置
+        if len(new_sol.items) >= 2:
+            i, j = random.sample(range(len(new_sol.items)), 2)
+            new_sol.items[i], new_sol.items[j] = new_sol.items[j], new_sol.items[i]
+        new_sol.fitness = self._evaluate(new_sol)
+
+        # 接受准则
+        if new_sol.fitness > solution.fitness or random.random() < math.exp((new_sol.fitness - solution.fitness) / self.temp):
+            solution = new_sol
+        self.temp *= 1 - self.cooling_rate
+        return solution
+
+# ------------------------------- 花垛算法 -------------------------------
+class FlowerStackOptimizer:
+    """集成力学模型的花垛算法"""
+    def __init__(self, container, products):
+        self.container = container
+        self.products = sorted(products, key=lambda x: x.fragility, reverse=True)
+        self.layers = []
+        self.current_z = 0
+
+    def optimize(self):
+        while self.products:
+            current_layer = self._build_layer()
+            self._adjust_centroid(current_layer)
+            self.layers.append(current_layer)
+        return self._generate_solution()
+    
+    def _build_layer(self):
+        layer = []
+        remaining_width = self.container.width
+        current_x = 0
+
+        while remaining_width > 0 and self.products:
+            # 线性规划选择最优组合
+            selected = self._select_by_lp(remaining_width)
+            if not selected:
+                break
+
+            for item in selected:
+                pos = (current_x, self.current_z, item.length)
+                layer.append(Placement(item, pos))
+                current_x += item.width + BusinessRules.PALLET_GAP['lateral']
+                remaining_width -= item.width
+                self.products.remove(item)
+        return layer
+    
+    def _select_by_lp(self, max_width):
+        """线性规划选择最优填充组合"""
+        prob = LpProblem("GapFilling", LpMaximize)
+        vars = [LpVariable(f"x{i}", cat='Binary') for i in range(len(self.products))]
+        
+        # 目标函数：最大化重量稳定性
+        prob += sum(vars[i] * (self.products[i].weight * self.products[i].width) for i in range(len(vars)))
+        
+        # 约束条件
+        prob += sum(vars[i] * self.products[i].width for i in range(len(vars))) <= max_width
+        
+        prob.solve()
+        return [self.products[i] for i in range(len(vars)) if vars[i].value() == 1]
+
+    def _adjust_centroid(self, layer):
+        """确保质心投影在下层支撑区域内"""
+        if not self.layers:
+            return
+            
+        total_weight = sum(item.weight for item in layer)
+        centroid_x = sum(item.x * item.weight for item in layer) / total_weight
+        prev_layer_span = (self.layers[-1][0].x, self.layers[-1][-1].x + self.layers[-1][-1].width)
+        
+        # 调整位置使质心在支撑区域内
+        if centroid_x < prev_layer_span[0]:
+            delta = prev_layer_span[0] - centroid_x
+            for item in layer:
+                item.x += delta
+        elif centroid_x > prev_layer_span[1]:
+            delta = centroid_x - prev_layer_span[1]
+            for item in layer:
+                item.x -= delta
+
+# ------------------------------- 特殊规则处理器 -------------------------------
+class SpecialRuleEnforcer:
+    """软约束处理：多品类托盘惩罚项"""
+    def __init__(self, container, products):
+        self.container = container
+        self.products = products
+        self.required_categories = set(p.category for p in products)
+
+    def calculate_penalty(self, solution):
+        # 检查是否存在包含所有品类的托盘
+        category_count = defaultdict(set)
+        for placement in solution.placements:
+            category_count[placement.pallet_id].add(placement.product.category)
+        
+        penalty = 0
+        for pallet_id, categories in category_count.items():
+            if self.required_categories.issubset(categories):
+                return 0
+        # 惩罚项 = 缺失品类数 * 权重
+        missing = len(self.required_categories - categories)
+        return missing * AlgorithmParams.SPECIAL_RULE_PENALTY_WEIGHT
+
+# ------------------------------- NSGA-II -------------------------------
+class NSGAII:
+    """多目标优化框架"""
+    def __init__(self, population_size=100, max_generations=200):
+        self.pop_size = population_size
+        self.max_gen = max_generations
+
+    def optimize(self, initial_population):
+        population = initial_population
+        for gen in range(self.max_gen):
+            # 生成子代
+            offspring = self._create_offspring(population)
+            
+            # 合并种群
+            combined = population + offspring
+            
+            # 非支配排序
+            fronts = self._fast_non_dominated_sort(combined)
+            
+            # 填充新一代
+            new_pop = []
+            for front in fronts:
+                if len(new_pop) + len(front) <= self.pop_size:
+                    new_pop.extend(front)
+                else:
+                    self._crowding_distance_assignment(front)
+                    front.sort(key=lambda x: x.crowding_distance, reverse=True)
+                    new_pop.extend(front[:self.pop_size - len(new_pop)])
+                    break
+            population = new_pop
+        return population
+
+    def _create_offspring(self, population):
+        # 锦标赛选择 + 模拟二进制交叉
+        offspring = []
+        for _ in range(self.pop_size//2):
+            p1 = self._tournament_select(population)
+            p2 = self._tournament_select(population)
+            child1, child2 = self._sbx_crossover(p1, p2)
+            offspring.extend([child1, child2])
+        return offspring
+
+    def _fast_non_dominated_sort(self, population):
+        # 实现标准非支配排序逻辑
+        fronts = []
+        remaining = population.copy()
+        while remaining:
+            front = []
+            for ind in remaining:
+                if not any(other.dominates(ind) for other in remaining):
+                    front.append(ind)
+            fronts.append(front)
+            remaining = [ind for ind in remaining if ind not in front]
+        return fronts
+
+# ------------------------------- 并行评估器 -------------------------------
+class ParallelEvaluator:
+    """多进程适应度评估"""
+    def __init__(self, num_workers=None):
+        self.pool = ProcessPoolExecutor(max_workers=num_workers)
+
+    def evaluate_population(self, population, eval_func):
+        futures = [self.pool.submit(eval_func, ind) for ind in population]
+        return [f.result() for f in futures]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.pool.shutdown()
