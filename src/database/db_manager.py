@@ -12,9 +12,15 @@
     create_tables(self): 使用 SQLAlchemy 的 Base 元数据创建所有表。
 """
 
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base
+from database.models import Base
 
 class DatabaseManager:
     def __init__(self, db_uri="sqlite:///container_optimization.db"):
