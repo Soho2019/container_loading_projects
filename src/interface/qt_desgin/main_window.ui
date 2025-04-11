@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PackingSoftware</class>
+ <widget class="QMainWindow" name="PackingSoftware">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>智能装箱软件</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>600</height>
+   </size>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="main_layout">
+    <item>
+     <widget class="QStackedWidget" name="stacked_widget">
+      <widget class="QWidget" name="page_condition">
+       <layout class="QVBoxLayout" name="condition_layout">
+        <item>
+         <widget class="QLabel" name="label_condition">
+          <property name="text">
+           <string>装箱条件设置界面</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_3dview">
+       <layout class="QVBoxLayout" name="view3d_layout">
+        <item>
+         <widget class="QLabel" name="label_3dview">
+          <property name="text">
+           <string>3D装箱结果展示界面</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_simulation">
+       <layout class="QVBoxLayout" name="simulation_layout">
+        <item>
+         <widget class="QLabel" name="label_simulation">
+          <property name="text">
+           <string>装箱过程动态仿真界面</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_data">
+       <layout class="QVBoxLayout" name="data_layout">
+        <item>
+         <widget class="QLabel" name="label_data">
+          <property name="text">
+           <string>装箱数据管理界面</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QDockWidget" name="left_dock">
+   <property name="windowTitle">
+    <string>功能导航</string>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QListWidget" name="function_list">
+    <item>
+     <property name="text">
+      <string>条件设置</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>3D结果展示</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>动态仿真</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>数据管理</string>
+     </property>
+    </item>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="right_dock">
+   <property name="windowTitle">
+    <string>工具栏</string>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="tool_widget">
+    <layout class="QVBoxLayout" name="tool_layout">
+     <item>
+      <widget class="QPushButton" name="default_tool_btn">
+       <property name="text">
+        <string>常用工具</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>30</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="import_condition_btn">
+       <property name="text">
+        <string>导入条件</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="export_condition_btn">
+       <property name="text">
+        <string>导出条件</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="clear_condition_btn">
+       <property name="text">
+        <string>清空条件</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="bottom_dock">
+   <property name="windowTitle">
+    <string>日志</string>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::BottomDockWidgetArea|Qt::TopDockWidgetArea</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QTextEdit" name="log_text">
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_file">
+    <property name="title">
+     <string>文件</string>
+    </property>
+    <addaction name="action_new"/>
+    <addaction name="action_open"/>
+    <addaction name="action_save"/>
+    <addaction name="separator"/>
+    <addaction name="action_exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_edit">
+    <property name="title">
+     <string>编辑</string>
+    </property>
+    <addaction name="action_undo"/>
+    <addaction name="action_redo"/>
+   </widget>
+   <widget class="QMenu" name="menu_view">
+    <property name="title">
+     <string>视图</string>
+    </property>
+    <addaction name="action_toggle_left_dock"/>
+    <addaction name="action_toggle_right_dock"/>
+    <addaction name="action_toggle_bottom_dock"/>
+   </widget>
+   <widget class="QMenu" name="menu_help">
+    <property name="title">
+     <string>帮助</string>
+    </property>
+    <addaction name="action_about"/>
+   </widget>
+   <addaction name="menu_file"/>
+   <addaction name="menu_edit"/>
+   <addaction name="menu_view"/>
+   <addaction name="menu_help"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_new">
+   <property name="text">
+    <string>新建</string>
+   </property>
+  </action>
+  <action name="action_open">
+   <property name="text">
+    <string>打开</string>
+   </property>
+  </action>
+  <action name="action_save">
+   <property name="text">
+    <string>保存</string>
+   </property>
+  </action>
+  <action name="action_exit">
+   <property name="text">
+    <string>退出</string>
+   </property>
+  </action>
+  <action name="action_undo">
+   <property name="text">
+    <string>撤销</string>
+   </property>
+  </action>
+  <action name="action_redo">
+   <property name="text">
+    <string>重做</string>
+   </property>
+  </action>
+  <action name="action_toggle_left_dock">
+   <property name="text">
+    <string>显示功能栏</string>
+   </property>
+  </action>
+  <action name="action_toggle_right_dock">
+   <property name="text">
+    <string>显示工具栏</string>
+   </property>
+  </action>
+  <action name="action_toggle_bottom_dock">
+   <property name="text">
+    <string>显示日志窗口</string>
+   </property>
+  </action>
+  <action name="action_about">
+   <property name="text">
+    <string>关于</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
