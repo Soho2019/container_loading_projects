@@ -10,11 +10,11 @@
 class AlgorithmParams:
     """算法超参数配置"""
     # 遗传算法参数(GA)
-    TRAY_POP_SIZE = 100                        # 种群大小
+    TRAY_POP_SIZE = 50                        # 种群大小
     TRAY_MUTATION_RATE = 0.25                  # 变异概率
     TRAY_ELITE_RATIO = 0.25                    # 精英保留比例
     MIN_PALLET_FILL = 0.8                      # 最小托盘面积填充率
-    HYBRID_MAX_ITER = 2000                     # 最大迭代次数
+    HYBRID_MAX_ITER = 1000                     # 最大迭代次数
 
     # 蚁群算法参数(ACO)
     ACO_ANTS_NUM = 150                          # 基准蚂蚁数量(根据问题规模动态调整)
@@ -27,26 +27,26 @@ class AlgorithmParams:
 
     # 粒子群算法参数(PSO)
     PSO_INERTIA = (0.95, 0.3)           # 惯性权重动态范围（初始 → 终值）
-    PSO_POP_SIZE = 50                   # 种群大小
-    PSO_MAX_ITER = 1000                 # 最大迭代次数
+    PSO_POP_SIZE = 30                   # 种群大小
+    PSO_MAX_ITER = 500                  # 最大迭代次数
     PSO_COGNITVE_WEIGHT = 1.2           # 个体学习因子权重(典型值0.7-1.2)
     PSO_SOCIAL_WEIGHT = 1.2             # 社会学习因子权重(典型值0.7-1.2)
     PSO_MAX_VELOCITY = 1000             # 最大速度(典型值10-1000)
 
     # 模拟退火算法参数(SA)
-    SA_INIT_TEMP = 1000                 # 初始温度(需与目标函数量级匹配)
-    SA_COOLING_RATE = 0.95              # 降温速率(典型值0.85-0.99)
+    SA_INIT_TEMP = 500                  # 初始温度(需与目标函数量级匹配)
+    SA_COOLING_RATE = 0.90              # 降温速率(典型值0.85-0.99)
     SA_MIN_TEMP = 1e-6                  # 最小温度(需与目标函数量级匹配)
     SA_TEMP_DECAY = "exponential"       # 降温方式（exponential/linear）
     SA_BOLTZMANN = 1e-3                 # Boltzmann 常数, 通常是 1e-5 到 1e-2 之间
 
 
     # 多目标遗传算法(NSGA-Ⅱ)
-    NSGA_II_POP_SIZE = 100        # 种群大小
+    NSGA_II_POP_SIZE = 50        # 种群大小
     NSGA_II_CROSSOVER_RATE = 0.7  # 交叉概率(交叉概率通常0.6-0.9)
     NSGA_II_MUTATION_RATE = 0.01  # 变异概率(变异概率通常0.01-0.1)
     NSGA_II_ELITES = 0.2          # 精英保留比例
-    NSGA_II_MAX_GEN = 1000        # 最大迭代次数
+    NSGA_II_MAX_GEN = 500         # 最大迭代次数
 
     # 混合算法全局控制
     HYBRID_MAX_ITER = 1500            # 最大迭代次数
@@ -54,6 +54,9 @@ class AlgorithmParams:
 
 
     SPECIAL_RULE_PENALTY_WEIGHT = 0.3  # 特殊规则惩罚权重
+
+    # 约束惩罚权重
+    CONSTRAINT_PENALTY = 0.5            # 违反约束的惩罚值
 
 
 class PathConfig:

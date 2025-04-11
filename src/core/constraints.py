@@ -194,6 +194,30 @@ class ConstraintChecker:
             z_min <= center_gz <= z_max
         )
     
+    def calculate_stability_score(self, products, positions) -> float:
+        """计算稳定性得分(0-1)"""
+        if not products:
+            return 0.0
+            
+        total_weight = sum(p.weight for p in products)
+        if total_weight <= 0:
+            return 0.0
+        
+        weighted_x = sum((pos[0] + dim[0]/2) * p.weight 
+                        for p, pos, dim in zip(products, positions, 
+                                            [self._get_placed_dimensions(p) for p in products]))
+        weighted_y = sum((pos[1] + dim[1]/2) * p.weight 
+                        for p, pos, dim in zip(products, positions, 
+                                            [self._get_placed_dimensions(p) for p in products]))
+        
+        center_x = weighted_x / total_weight
+        center_y = weighted_y / total_weight
+        
+        offset_x = abs(center_x - self.container.length/2) / (self.container.length/2)
+        offset_y = abs(center_y - self.container.width/2) / (self.container.width/2)
+        
+        return 1 - (offset_x + offset_y)/2
+    
     # ----------------- 特殊业务规则约束 -----------------
     def check_cut(
             self, 
