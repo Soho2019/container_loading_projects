@@ -15,8 +15,8 @@ from sklearn.cluster import KMeans, DBSCAN
 from collections import defaultdict
 from dataclasses import dataclass
 from copy import deepcopy
-from src.config.constants import AlgorithmParams, BusinessRules
-from src.core.domain import (
+from config.constants import AlgorithmParams, BusinessRules
+from core.domain import (
     ContainerSpec,
     ProductsSpec,
     PalletSpec,
@@ -24,7 +24,7 @@ from src.core.domain import (
     Particle,
     Placement,
 )
-from src.core.constraints import ConstraintChecker
+from core.constraints import ConstraintChecker
 from database.converters import decode_rotations
 
 logger = logging.getLogger(__name__)

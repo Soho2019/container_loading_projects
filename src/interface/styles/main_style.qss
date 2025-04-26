@@ -1,0 +1,141 @@
+/* 用于定义界面的样式 */
+
+/* 基础样式 */
+QWidget {
+    background: #f5f5f5;
+    font-family: "Microsoft YaHei";
+    font-size: 12px;
+}
+
+/* 新版按钮样式 */
+QPushButton {
+    background: #5b7cff;
+    /* 改为蓝色系 */
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    /* 减小内边距 */
+    border-radius: 4px;
+    min-width: 80px;
+    /* 最小宽度 */
+    min-height: 28px;
+    /* 高度适中 */
+    font-size: 12px;
+}
+
+QPushButton:hover {
+    background: #4a6be8;
+    /* 悬停深色 */
+}
+
+QPushButton:pressed {
+    background: #3a5bd9;
+    /* 按下更深色 */
+}
+
+/* 工具栏按钮特殊样式 */
+QWidget#tool_widget QPushButton {
+    min-width: 0;
+    /* 覆盖默认最小宽度 */
+    padding: 4px 8px;
+    /* 更紧凑的工具栏按钮 */
+}
+
+/* 输入框样式 */
+QLineEdit,
+QTextEdit {
+    border: 1px solid #ccc;
+    padding: 6px;
+    border-radius: 4px;
+    background: white;
+}
+
+/* 标签样式 */
+QLabel {
+    color: #333;
+}
+
+/* 组合框样式 */
+QComboBox {
+    border: 1px solid #ccc;
+    padding: 6px;
+    border-radius: 4px;
+    background: white;
+}
+
+/* 表格样式 */
+QTableView {
+    border: 1px solid #ddd;
+    background-color: white;
+}
+
+/* 用 item 的 border-bottom 模拟网格线 */
+QTableView::item {
+    border-bottom: 1px solid #eee;
+}
+
+/* 最后一行的 item 不需要底部边框，否则会和表格边框重叠 */
+QTableView::item:last {
+    border-bottom: none;
+}
+
+/* 选中项样式 */
+QTableView::item:selected {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: #f8f8f8;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+}
+
+/* 滚动条样式 */
+QScrollBar:vertical {
+    width: 12px;
+    background: #f5f5f5;
+}
+
+QScrollBar::handle:vertical {
+    background: #ccc;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+/* 分隔线样式 */
+QFrame[frameShape="4"] {
+    /* HLine */
+    color: #ddd;
+}
+
+/* 日志样式 */
+QTextEdit#log_text {
+    font-family: Consolas, monospace;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+}
+
+/* 菜单项样式 */
+QMenu::item {
+    padding: 5px 20px;
+    /* 增加内边距 */
+    color: #333;
+    /* 默认文字颜色 */
+    background-color: white;
+}
+
+QMenu::item:selected {
+    /* 悬浮状态 */
+    color: #333;
+    /* 保持黑色文字 */
+    background-color: #e0e0e0;
+    /* 浅灰色背景 */
+}
+
+QMenu::item:disabled {
+    color: #999;
+}

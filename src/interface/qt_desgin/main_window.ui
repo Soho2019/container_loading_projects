@@ -56,14 +56,49 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="page_statement">
+       <layout class="QVBoxLayout" name="statement_layout">
+        <item>
+         <widget class="QLabel" name="label_statement">
+          <property name="text">
+           <string>报表界面</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
       <widget class="QWidget" name="page_data">
        <layout class="QVBoxLayout" name="data_layout">
         <item>
-         <widget class="QLabel" name="label_data">
-          <property name="text">
-           <string>装箱数据管理界面</string>
-          </property>
+         <widget class="QWidget" name="data_switcher">
+          <layout class="QHBoxLayout" name="switcher_layout">
+           <item>
+            <widget class="QPushButton" name="btn_product">
+             <property name="text">
+              <string>产品数据</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btn_pallet">
+             <property name="text">
+              <string>托盘数据</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btn_container">
+             <property name="text">
+              <string>集装箱数据</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
+        </item>
+        <item>
+         <widget class="EnhancedTableWidget" name="data_table"/>
         </item>
        </layout>
       </widget>
@@ -89,12 +124,17 @@
     </item>
     <item>
      <property name="text">
-      <string>3D结果展示</string>
+      <string>结果展示</string>
      </property>
     </item>
     <item>
      <property name="text">
       <string>动态仿真</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>报表打印</string>
      </property>
     </item>
     <item>
@@ -249,10 +289,19 @@
     </property>
     <addaction name="action_about"/>
    </widget>
+   <widget class="QMenu" name="menu_settings">
+    <property name="title">
+     <string>设置</string>
+    </property>
+    <addaction name="action_settings"/>  <!-- 添加设置动作 -->
+    <addaction name="theme_settings"/>
+    <addaction name="language_settings"/>
+   </widget>
    <addaction name="menu_file"/>
    <addaction name="menu_edit"/>
    <addaction name="menu_view"/>
    <addaction name="menu_help"/>
+   <addaction name="menu_settings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_new">
@@ -303,6 +352,21 @@
   <action name="action_about">
    <property name="text">
     <string>关于</string>
+   </property>
+  </action>
+  <action name="action_settings">
+   <property name="text">
+    <string>动画速度</string>
+   </property>
+  </action>
+  <action name="theme_settings">
+   <property name="text">
+    <string>主题设置</string>
+   </property>
+  </action>
+  <action name="language_settings">
+   <property name="text">
+    <string>语言设置</string>
    </property>
   </action>
  </widget>

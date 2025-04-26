@@ -15,12 +15,13 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database.models import Base
+from database.base import Base
+
 
 class DatabaseManager:
     def __init__(self, db_uri="sqlite:///container_optimization.db"):
@@ -32,14 +33,15 @@ class DatabaseManager:
 
         self.engine = create_engine(db_uri)
         self.Session = sessionmaker(bind=self.engine)
-    
+
     def create_tables(self):
         """创建所有表"""
         Base.metadata.create_all(self.engine)
-    
+
     def get_session(self):
         """获取新会话"""
         return self.Session()
+
 
 if __name__ == "__main__":
     db = DatabaseManager("sqlite:///container_optimization.db")

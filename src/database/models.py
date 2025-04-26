@@ -24,7 +24,12 @@ from sqlalchemy import (
     Text,
     CheckConstraint,
 )
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import func
+from database.base import Base
 
 Base = declarative_base()
 
@@ -41,8 +46,8 @@ class Product(Base):
     weight = Column(DECIMAL(10, 3), nullable=False)
     direction = Column(Integer, CheckConstraint("direction IN (0, 1)"), default=0)
     fragile = Column(Integer, CheckConstraint("fragile IN (0, 1, 2, 3)"), default=0)
-    created_at = Column(DateTime, default="CURRENT_TIMESTAMP")
-    updated_at = Column(DateTime, default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class Pallet(Base):
@@ -52,8 +57,8 @@ class Pallet(Base):
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
     max_weight = Column(DECIMAL(10, 3), nullable=False)
-    created_at = Column(DateTime, default="CURRENT_TIMESTAMP")
-    updated_at = Column(DateTime, default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class Container(Base):
@@ -64,8 +69,10 @@ class Container(Base):
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
     max_weight = Column(DECIMAL(10, 3), nullable=False)
-    created_at = Column(DateTime, default="CURRENT_TIMESTAMP")
-    updated_at = Column(DateTime, default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    reports = relationship("PackingReport", back_populates="container")
 
 
 class HistoryFile(Base):
@@ -75,8 +82,8 @@ class HistoryFile(Base):
     scheme_id = Column(Integer, ForeignKey("loading_schemes.scheme_id"), nullable=False)
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default="CURRENT_TIMESTAMP")
-    updated_at = Column(DateTime, default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class LoadingScheme(Base):
@@ -87,8 +94,8 @@ class LoadingScheme(Base):
         Integer, ForeignKey("containers.container_id"), nullable=False
     )
     scheme_data = Column(Text, nullable=False)
-    created_at = Column(DateTime, default="CURRENT_TIMESTAMP")
-    updated_at = Column(DateTime, default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class User(Base):
@@ -98,5 +105,27 @@ class User(Base):
     password = Column(String(255), nullable=False)
     email = Column(String(100))
     role = Column(Integer, CheckConstraint("role IN (0, 1, 2)"), default=0)
-    created_at = Column(DateTime, default="CURRENT_TIMESTAMP")
-    updated_at = Column(DateTime, default="CURRENT_TIMESTAMP")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class PackingReport(Base):
+    __tablename__ = "packing_reports"
+
+    report_id = Column(Integer, primary_key=True)
+    solution_id = Column(String(50), unique=True, nullable=False)
+    container_id = Column(Integer, ForeignKey("containers.container_id"))
+    creation_date = Column(DateTime, default=datetime.now)
+    total_items = Column(Integer)
+    total_volume = Column(Float)  # in m³
+    total_weight = Column(Float)  # in kg
+    utilization = Column(Float)  # 0-1
+    stability = Column(Float)  # 0-1
+    notes = Column(Text)
+    image_path = Column(String(255))  # 缩略图路径
+
+    # 关系
+    container = relationship("Container", back_populates="reports")
+
+    def __repr__(self):
+        return f"<PackingReport(solution_id='{self.solution_id}', date='{self.creation_date}')>"

@@ -1,0 +1,94 @@
+/* 深色主题样式 */
+
+QWidget {
+    background: #2d2d2d;
+    color: #f0f0f0;
+    font-family: "Microsoft YaHei";
+    font-size: 12px;
+}
+
+/* 按钮样式 */
+QPushButton {
+    background: #3a3a3a;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+QPushButton:hover {
+    background: #4a4a4a;
+}
+
+QPushButton:pressed {
+    background: #2a2a2a;
+}
+
+/* 输入框样式 */
+QLineEdit,
+QTextEdit {
+    border: 1px solid #4a4a4a;
+    padding: 6px;
+    border-radius: 4px;
+    background: #3a3a3a;
+    color: #f0f0f0;
+}
+
+/* 标签样式 */
+QLabel {
+    color: #f0f0f0;
+}
+
+/* 组合框样式 */
+QComboBox {
+    border: 1px solid #4a4a4a;
+    padding: 6px;
+    border-radius: 4px;
+    background: #3a3a3a;
+    color: #f0f0f0;
+}
+
+/* 表格样式 */
+QTableView {
+    border: 1px solid #4a4a4a;
+    background-color: #3a3a3a;
+}
+
+QTableView::item {
+    border-bottom: 1px solid #4a4a4a;
+}
+
+QTableView::item:last {
+    border-bottom: none;
+}
+
+QTableView::item:selected {
+    background-color: #4a4a4a;
+    color: #f0f0f0;
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: #3a3a3a;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #4a4a4a;
+    border-right: 1px solid #4a4a4a;
+}
+
+/* 滚动条样式 */
+QScrollBar:vertical {
+    width: 12px;
+    background: #3a3a3a;
+}
+
+QScrollBar::handle:vertical {
+    background: #5a5a5a;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+/* 分隔线样式 */
+QFrame[frameShape="4"] {
+    color: #4a4a4a;
+}
